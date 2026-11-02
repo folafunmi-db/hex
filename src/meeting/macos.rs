@@ -68,8 +68,13 @@ pub(crate) fn system_audio_permitted() -> bool {
     system_audio_ready() || screen_recording_permitted()
 }
 
-/// Whether system audio uses the display-independent process tap.
+/// Whether system audio uses the display-independent process tap. Before
+/// macOS 14.2 there are no taps, and Screen Recording is what lets Hex hear
+/// the other participants.
 pub(crate) fn system_audio_ready() -> bool {
+    if !crate::macos_version::process_taps() {
+        return screen_recording_permitted();
+    }
     matches!(
         system_audio_authorization(),
         SystemAudioAuthorization::Granted | SystemAudioAuthorization::Unknown
@@ -116,14 +121,16 @@ pub(super) fn move_to_trash(path: &Path) -> Result<()> {
 pub(super) fn open_system_audio(sink: &PacketSink) -> Result<Box<dyn LiveSource>> {
     let authorization = system_audio_authorization();
     let screen_permitted = screen_recording_permitted();
-    let prefer_tap = match authorization {
-        SystemAudioAuthorization::Granted | SystemAudioAuthorization::Unknown => true,
-        SystemAudioAuthorization::NotDetermined => {
-            request_system_audio_access();
-            !screen_permitted
-        }
-        SystemAudioAuthorization::Denied => false,
-    };
+    // Before macOS 14.2 there are no process taps: ScreenCaptureKit only.
+    let prefer_tap = crate::macos_version::process_taps()
+        && match authorization {
+            SystemAudioAuthorization::Granted | SystemAudioAuthorization::Unknown => true,
+            SystemAudioAuthorization::NotDetermined => {
+                request_system_audio_access();
+                !screen_permitted
+            }
+            SystemAudioAuthorization::Denied => false,
+        };
     if prefer_tap {
         match ProcessTapSource::start() {
             Ok(source) => return Ok(Box::new(source)),
@@ -665,8 +672,16 @@ pub(crate) fn reset_system_audio_request() {
 }
 
 /// Shows the macOS System Audio Recording prompt when consent is undecided.
-/// Returns whether a prompt was requested.
+/// Returns whether a prompt was requested. Before macOS 14.2 it asks for
+/// Screen Recording instead, which the ScreenCaptureKit fallback needs.
 pub fn request_system_audio_access() -> bool {
+    if !crate::macos_version::process_taps() {
+        if screen_recording_permitted() || SYSTEM_AUDIO_REQUESTED.swap(true, Ordering::Relaxed) {
+            return false;
+        }
+        request_screen_recording();
+        return true;
+    }
     if system_audio_authorization() != SystemAudioAuthorization::NotDetermined
         || SYSTEM_AUDIO_REQUESTED.swap(true, Ordering::Relaxed)
     {

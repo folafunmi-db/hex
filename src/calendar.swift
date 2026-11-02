@@ -41,14 +41,16 @@ private struct BridgeEvent: Codable {
     let url: String?
 }
 
+/// `.fullAccess` from macOS 14, `.authorized` before: the same status.
+private let fullAccess = EKAuthorizationStatus(rawValue: 3)!
+
+/// Not determined 0, restricted 1, denied 2, full access 3, write-only 4
+/// (EventKit's own raw values; `.fullAccess` and `.writeOnly` are macOS 14
+/// names, and macOS 13 answers `.authorized`, also 3).
 private func statusCode(_ status: EKAuthorizationStatus) -> Int32 {
-    switch status {
-    case .notDetermined: return 0
-    case .restricted: return 1
-    case .denied: return 2
-    case .fullAccess: return 3
-    case .writeOnly: return 4
-    @unknown default: return 2
+    switch status.rawValue {
+    case 0...4: return Int32(status.rawValue)
+    default: return 2
     }
 }
 
@@ -90,7 +92,7 @@ private func currentStatus() -> EKAuthorizationStatus {
     if status != .notDetermined {
         grantedHere = false
     }
-    return status == .notDetermined && grantedHere ? .fullAccess : status
+    return status == .notDetermined && grantedHere ? fullAccess : status
 }
 
 @_cdecl("hex_calendar_authorization")
@@ -114,10 +116,15 @@ public func hexCalendarRequestAccess(
 ) -> Int32 {
     let semaphore = DispatchSemaphore(value: 0)
     let answer = AccessAnswer()
-    store.requestFullAccessToEvents { allowed, failure in
+    let completion: EKEventStoreRequestAccessCompletionHandler = { allowed, failure in
         answer.granted = allowed
         answer.error = failure
         semaphore.signal()
+    }
+    if #available(macOS 14, *) {
+        store.requestFullAccessToEvents(completion: completion)
+    } else {
+        store.requestAccess(to: .event, completion: completion)
     }
     semaphore.wait()
     granted.pointee = answer.granted
@@ -134,7 +141,7 @@ public func hexCalendarRequestAccess(
 /// Counts EventKit store changes since the first call with access.
 @_cdecl("hex_calendar_change_count")
 public func hexCalendarChangeCount() -> UInt64 {
-    guard currentStatus() == .fullAccess else { return 0 }
+    guard currentStatus() == fullAccess else { return 0 }
     startObserving()
     changeLock.lock()
     defer { changeLock.unlock() }
@@ -143,7 +150,7 @@ public func hexCalendarChangeCount() -> UInt64 {
 
 @_cdecl("hex_calendar_calendars")
 public func hexCalendarCalendars() -> UnsafeMutablePointer<CChar>? {
-    guard currentStatus() == .fullAccess else { return nil }
+    guard currentStatus() == fullAccess else { return nil }
     storeLock.lock()
     defer { storeLock.unlock() }
     let calendars = store.calendars(for: .event).map {
@@ -159,7 +166,7 @@ public func hexCalendarCalendars() -> UnsafeMutablePointer<CChar>? {
 /// Events overlapping the window, soonest first, at most `limit`.
 @_cdecl("hex_calendar_events")
 public func hexCalendarEvents(_ fromMs: Double, _ toMs: Double, _ limit: Int32) -> UnsafeMutablePointer<CChar>? {
-    guard currentStatus() == .fullAccess else { return nil }
+    guard currentStatus() == fullAccess else { return nil }
     storeLock.lock()
     defer { storeLock.unlock() }
     let predicate = store.predicateForEvents(

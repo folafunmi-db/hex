@@ -239,6 +239,9 @@ struct BrowserTap {
 impl BrowserTap {
     /// None when no browser process matches.
     fn start(processes: BrowserProcesses) -> Result<Option<Self>> {
+        if !crate::macos_version::process_taps() {
+            return Err(eyre!("process taps need macOS 14.2"));
+        }
         let processes = crate::microphone_activity::browser_process_objects(processes)?;
         if processes.is_empty() {
             return Ok(None);

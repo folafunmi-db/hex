@@ -984,7 +984,13 @@ fn bring_forward(window: &rune::AppHandle<Ui>) {
     crate::app_settings::set_dock_icon_visible(true);
     if let Some(mtm) = MainThreadMarker::new() {
         let app = NSApplication::sharedApplication(mtm);
-        app.activate();
+        if crate::macos_version::at_least(14, 0) {
+            app.activate();
+        } else {
+            // `activate` is new in macOS 14.
+            #[allow(deprecated)]
+            app.activateIgnoringOtherApps(true);
+        }
     }
     window.open();
 }

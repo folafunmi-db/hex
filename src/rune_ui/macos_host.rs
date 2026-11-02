@@ -1256,8 +1256,12 @@ impl ScrawlHost {
     }
 
     /// The pane shows while the `capture` experiment is on; `refresh` also
-    /// rereads the permission and whether Scrawl runs.
+    /// rereads the permission and whether Scrawl runs. Before macOS 15 there
+    /// is no pane: Annotate records through `SCRecordingOutput`.
     fn poll(&mut self, state: &mut PlatformState, refresh: bool) -> bool {
+        if !crate::macos_version::annotate() {
+            return false;
+        }
         let mut changed = state.scrawl.is_none();
         let view = state.scrawl.get_or_insert_default();
         if let Some(choice) = self.folder_choice.as_ref().and_then(|p| p.poll()) {

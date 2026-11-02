@@ -2487,9 +2487,14 @@ impl AppSettings {
             .filter(|binding| !self.hotkey_in_use(HotkeySlot::SecondDictation, binding))
     }
 
-    /// Annotate is on: the person hasn't turned it off.
+    /// Annotate is on: the person hasn't turned it off, and (on macOS) the
+    /// system has `SCRecordingOutput`.
     #[cfg(hex_capture)]
     pub fn capture_on(&self) -> bool {
+        #[cfg(target_os = "macos")]
+        if !crate::macos_version::annotate() {
+            return false;
+        }
         self.capture.enabled
     }
 

@@ -214,8 +214,18 @@ impl Feature {
             Self::StandaloneSpecialKeys | Self::SkipPauses => {
                 cfg!(any(target_os = "linux", target_os = "windows"))
             }
+            // It listens through a Core Audio process tap (macOS 14.2).
+            Self::PauseBrowser => {
+                #[cfg(target_os = "macos")]
+                {
+                    crate::macos_version::process_taps()
+                }
+                #[cfg(not(target_os = "macos"))]
+                {
+                    false
+                }
+            }
             Self::MouseShortcuts
-            | Self::PauseBrowser
             | Self::KeepOnClipboard
             | Self::CopyOnly
             | Self::SecondDictationShortcut

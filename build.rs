@@ -57,6 +57,11 @@ fn main() {
         &["FoundationModels"],
     );
     println!("cargo:rustc-link-arg=-Wl,-weak_framework,FoundationModels");
+    // Core Audio's process taps (`AudioHardwareCreateProcessTap`,
+    // `CATapDescription`) are new in macOS 14.2, and Rust's bindings import
+    // them strongly. Weak-link the framework so Hex still launches on macOS 13;
+    // `macos_version::process_taps` keeps the calls from running there.
+    println!("cargo:rustc-link-arg=-Wl,-weak_framework,CoreAudio");
     compile_swift_bridge("calendar", "HEXCalendarBridge", &[]);
     println!("cargo:rustc-link-lib=framework=EventKit");
     compile_permission_guide();
@@ -241,8 +246,8 @@ fn compile_swift_bridge(name: &str, module: &str, without_autolink: &[&str]) {
         .expect("xcrun is required to compile Swift bridges");
     assert!(sdk.status.success(), "could not locate the macOS SDK");
     let target = match std::env::var("TARGET").as_deref() {
-        Ok("aarch64-apple-darwin") => "arm64-apple-macosx15.0",
-        Ok("x86_64-apple-darwin") => "x86_64-apple-macosx15.0",
+        Ok("aarch64-apple-darwin") => "arm64-apple-macosx13.0",
+        Ok("x86_64-apple-darwin") => "x86_64-apple-macosx13.0",
         Ok(target) => panic!("unsupported macOS target for {module}: {target}"),
         Err(error) => panic!("TARGET is unavailable: {error}"),
     };

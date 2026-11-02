@@ -50,7 +50,7 @@ sign() {
   fi
 }
 
-export MACOSX_DEPLOYMENT_TARGET=15.0
+export MACOSX_DEPLOYMENT_TARGET=13.0
 # Cargo may run through a wrapper that does not forward the environment (Kit's
 # HiveMind-backed cargo), so build-time variables also travel as --config.
 env_args=()
@@ -96,7 +96,7 @@ mkdir -p "$icon_output"
 xcrun actool "$root/app/AppIcon.icon" \
   --compile "$icon_output" \
   --platform macosx \
-  --minimum-deployment-target 15.0 \
+  --minimum-deployment-target 13.0 \
   --app-icon AppIcon \
   --standalone-icon-behavior all \
   --output-partial-info-plist "$icon_info" \

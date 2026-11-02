@@ -17,7 +17,7 @@ None of these are code-signed, notarized, or published. They never update
 themselves, so the signed release cannot replace the build you are testing.
 GitHub wraps each artifact in a zip; unzip it first.
 
-## macOS (Apple silicon, macOS 15 or later)
+## macOS (Apple silicon, macOS 13 or later)
 
 The test app is **Hex Test.app** (bundle ID `anomaly.hex.test`),
 ad-hoc signed and never checks for updates. Its own name and bundle ID let it sit

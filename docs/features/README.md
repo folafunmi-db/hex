@@ -58,6 +58,19 @@ not require OpenCode, launch the app automatically, migrate the legacy
 Swift app, or forcibly replace an existing app destination. Homebrew uninstall
 leaves runtime settings, models, and retained data intact.
 
+A build from this checkout (`scripts/build-app.sh`, which still needs the
+macOS 26 SDK) runs on macOS 13 Ventura and later. Features whose system APIs
+are newer turn themselves off on older systems (`src/macos_version.rs`):
+
+- Annotate (macOS 15: `SCRecordingOutput`, `SCScreenshotManager`, iPhone
+  mirroring): no Annotate pane or shortcut.
+- Also pause the browser (macOS 14.2 process taps): not listed in Labs.
+- Meetings before macOS 14.2 hear the other participants through
+  ScreenCaptureKit only, so System Audio asks for Screen Recording, and
+  automatic call detection (Core Audio's process list) is off; starting a
+  recording by hand works.
+- Apple Speech and Apple Intelligence stay macOS 26 only.
+
 ```ts
 Download Hex                              // setup.download-recovery
 ├── anoma.ly/hex names the visitor's platform  // setup.download-button
